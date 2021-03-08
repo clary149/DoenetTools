@@ -143,7 +143,7 @@ export default function attempt() {
       propCode: {value: 'Enter cat names'},
       description: 'Changes the text'},
       {name: 'Alert',
-      propPreview: '<Textfield alert/>',
+      propPreview: '<Textfield alert>',
       propCode: {alert},
       description: 'Changes to alert mode (border is red)'},
       ]

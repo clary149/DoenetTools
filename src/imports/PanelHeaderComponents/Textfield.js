@@ -15,8 +15,8 @@ export default function Textfield(props) {
   if (props.size === "medium") {
     textfield.height = '36px'
   }
-  if (props.text) {
-    textfield.text = props.text;
+  if (props.value) {
+    textfield.value = props.value;
   }
   if (props.alert) {
     textfield.border = '2px solid #C1292E'

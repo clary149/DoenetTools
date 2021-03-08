@@ -788,7 +788,7 @@ const DriveInfoPanel = function(props){
   let deleteCourseButton = null;
   if (isOwner){
     deleteCourseButton = <>
-    <Button value="Delete Course" callback={()=>{
+    <Button alert value="Delete Course" callback={()=>{
     // alert("Delete Drive")
     setDrivesInfo({
       color:props.color,
