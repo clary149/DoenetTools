@@ -6,6 +6,9 @@ const Display = styled.div`
     border-radius: 5px;
     height: 36px;
     width: 36px;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
     background-color: ${props => props.color || "#f6f8ff"};
     background-image: ${props => props.image || "none"};
 
@@ -57,7 +60,7 @@ const Image = styled.div`
     height: 50px;
     width: 68px;
     margin: 4px;
-    object-fit: fill;
+    background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     background-image: ${props => props.image || "none"};
@@ -76,6 +79,7 @@ export default function ColorImagePicker(props){
         } else if (menuOpen == "False") {
             setMenuOpen("True")
         }
+        if (props.callback) props.callback()
     }
 
     function changeColor(newColor) {
