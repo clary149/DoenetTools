@@ -3084,7 +3084,7 @@ describe('Answer Tag Tests', function () {
     <text>a</text>
     <map>
       <template>
-        <p>Enter <m>x^<copySource/></m>: <answer><award><math>x^<copySource/></math></award></answer></p>
+        <p>Enter <m>x^<copy tname="_source" /></m>: <answer><award><math>x^<copy tname="_source" /></math></award></answer></p>
         <p>Credit achieved: <copy prop="creditAchieved" tname="_answer1" /></p>
         <p>Current response: <copy prop="currentResponse" tname="_answer1" /></p>
         <p>Submitted response: <copy prop="submittedResponse" tname="_answer1" includeUndefinedObjects /></p>
@@ -3411,7 +3411,7 @@ describe('Answer Tag Tests', function () {
     <text>a</text>
     <map assignNames="a,b,c">
       <template newNamespace>
-        <p>Enter <m>x^<copySource/></m>: <answer><award><math>x^<copySource/></math></award></answer></p>
+        <p>Enter <m>x^<copy tname="_source" /></m>: <answer><award><math>x^<copy tname="_source" /></math></award></answer></p>
         <p>Credit achieved: <copy assignNames="ca" prop="creditAchieved" tname="_answer1" /></p>
         <p>Current response: <copy assignNames="cr" prop="currentResponse" tname="_answer1" /></p>
         <p>Submitted response: <copy assignNames="sr" prop="submittedResponse" tname="_answer1" includeUndefinedObjects /></p>
@@ -6140,7 +6140,7 @@ describe('Answer Tag Tests', function () {
     <choiceinput>
       <map>
         <template>
-          <choice credit="$cs"><copySource hide name="cs" />Get <number displaydigits="3"><copySource /></number>, plus a bit is <math displaydigits="3" simplify><copySource/>+0.001</math></choice>
+          <choice credit="$cs"><copy tname="_source" hide name="cs" />Get <number displaydigits="3"><copy tname="_source" /></number>, plus a bit is <math displaydigits="3" simplify><copy tname="_source" />+0.001</math></choice>
         </template>
         <sources>
           <sequence from="0" to="1" count="$num" />
@@ -6515,7 +6515,7 @@ describe('Answer Tag Tests', function () {
       <p>Credit for cat: <mathinput name="catcredit" prefill="0.3" /> </p>
       <p>Last option: <textinput prefill="bird" name="last" /></p>
       <answer>
-        <choiceinput>
+        <choiceinput fixedOrder>
         <choice credit="$catcredit">cat</choice>
         <choice credit="1">dog</choice>
         <choice>monkey</choice>
@@ -6582,15 +6582,15 @@ describe('Answer Tag Tests', function () {
 
       cy.log('Change last choice')
       cy.get('#\\/last_input').clear().type('mouse{enter}')
-      // cy.get(choiceinputSubmitAnchor).invoke('text').then((text) => {
-      //   expect(text.trim().toLowerCase()).equal('check work')
-      // })
-      // cy.get(choiceinputCorrectAnchor).should('not.exist');
-      // cy.get(choiceinputIncorrectAnchor).should('not.exist');
-      // cy.get(choiceinputPartialAnchor).should('not.exist');
+      cy.get(choiceinputSubmitAnchor).invoke('text').then((text) => {
+        expect(text.trim().toLowerCase()).equal('check work')
+      })
+      cy.get(choiceinputCorrectAnchor).should('not.exist');
+      cy.get(choiceinputIncorrectAnchor).should('not.exist');
+      cy.get(choiceinputPartialAnchor).should('not.exist');
 
-      // cy.log("Click submit button")
-      // cy.get(choiceinputSubmitAnchor).click();
+      cy.log("Click submit button")
+      cy.get(choiceinputSubmitAnchor).click();
       cy.get(choiceinputSubmitAnchor).should('not.exist');
       cy.get(choiceinputCorrectAnchor).invoke('text').then((text) => {
         expect(text.trim().toLowerCase()).equal('correct')
@@ -6656,15 +6656,15 @@ describe('Answer Tag Tests', function () {
 
       cy.log('Change animal name')
       cy.get('#\\/last_input').clear().type('rabbit{enter}')
-      // cy.get(choiceinputSubmitAnchor).invoke('text').then((text) => {
-      //   expect(text.trim().toLowerCase()).equal('check work')
-      // })
-      // cy.get(choiceinputCorrectAnchor).should('not.exist');
-      // cy.get(choiceinputIncorrectAnchor).should('not.exist');
-      // cy.get(choiceinputPartialAnchor).should('not.exist');
+      cy.get(choiceinputSubmitAnchor).invoke('text').then((text) => {
+        expect(text.trim().toLowerCase()).equal('check work')
+      })
+      cy.get(choiceinputCorrectAnchor).should('not.exist');
+      cy.get(choiceinputIncorrectAnchor).should('not.exist');
+      cy.get(choiceinputPartialAnchor).should('not.exist');
 
-      // cy.log("Click submit button")
-      // cy.get(choiceinputSubmitAnchor).click();
+      cy.log("Click submit button")
+      cy.get(choiceinputSubmitAnchor).click();
       cy.get(choiceinputSubmitAnchor).should('not.exist');
       cy.get(choiceinputCorrectAnchor).should('not.exist');
       cy.get(choiceinputIncorrectAnchor).invoke('text').then((text) => {

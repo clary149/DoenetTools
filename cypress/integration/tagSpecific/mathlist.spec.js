@@ -160,7 +160,7 @@ describe('Mathlist Tag Tests', function () {
       let mathaAnchor = cesc('#' + matha.componentName);
       let mathb = components["/_mathlist1"].activeChildren[3];
       let mathbAnchor = cesc('#' + mathb.componentName);
-    
+
 
       cy.log('Test value displayed in browser')
       cy.get('#\\/_math1').find('.mjx-mrow').eq(0).invoke('text').then((text) => {
@@ -245,15 +245,15 @@ describe('Mathlist Tag Tests', function () {
       </mathlist>
     </mathlist>
 
-    <mathinput><copy prop="math1" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math2" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math3" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math4" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math5" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math6" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math7" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math8" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math9" tname="_mathlist1" /></mathinput>
+    <mathinput><bindValueTo><copy prop="math1" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math2" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math3" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math4" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math5" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math6" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math7" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math8" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math9" tname="_mathlist1" /></bindValueTo></mathinput>
 
     ` }, "*");
     });
@@ -304,16 +304,6 @@ describe('Mathlist Tag Tests', function () {
         expect(text.trim()).equal('j')
       })
 
-      cy.get("#\\/_mathinput1_input").should('have.value', 'a')
-      cy.get("#\\/_mathinput2_input").should('have.value', 'q')
-      cy.get("#\\/_mathinput3_input").should('have.value', 'r')
-      cy.get("#\\/_mathinput4_input").should('have.value', 'h')
-      cy.get("#\\/_mathinput5_input").should('have.value', 'b')
-      cy.get("#\\/_mathinput6_input").should('have.value', 'u')
-      cy.get("#\\/_mathinput7_input").should('have.value', 'v')
-      cy.get("#\\/_mathinput8_input").should('have.value', 'i')
-      cy.get("#\\/_mathinput9_input").should('have.value', 'j')
-
       cy.log('Test internal values are set to the correct values')
       cy.window().then((win) => {
         let components = Object.assign({}, win.state.components);
@@ -344,15 +334,15 @@ describe('Mathlist Tag Tests', function () {
 
       cy.log('change values')
 
-      cy.get("#\\/_mathinput1_input").clear().type("1{enter}")
-      cy.get("#\\/_mathinput2_input").clear().type("2{enter}")
-      cy.get("#\\/_mathinput3_input").clear().type("3{enter}")
-      cy.get("#\\/_mathinput4_input").clear().type("4{enter}")
-      cy.get("#\\/_mathinput5_input").clear().type("5{enter}")
-      cy.get("#\\/_mathinput6_input").clear().type("6{enter}")
-      cy.get("#\\/_mathinput7_input").clear().type("7{enter}")
-      cy.get("#\\/_mathinput8_input").clear().type("8{enter}")
-      cy.get("#\\/_mathinput9_input").clear().type("9{enter}")
+      cy.get("#\\/_mathinput1 textarea").type("{end}{backspace}1{enter}", { force: true })
+      cy.get("#\\/_mathinput2 textarea").type("{end}{backspace}2{enter}", { force: true })
+      cy.get("#\\/_mathinput3 textarea").type("{end}{backspace}3{enter}", { force: true })
+      cy.get("#\\/_mathinput4 textarea").type("{end}{backspace}4{enter}", { force: true })
+      cy.get("#\\/_mathinput5 textarea").type("{end}{backspace}5{enter}", { force: true })
+      cy.get("#\\/_mathinput6 textarea").type("{end}{backspace}6{enter}", { force: true })
+      cy.get("#\\/_mathinput7 textarea").type("{end}{backspace}7{enter}", { force: true })
+      cy.get("#\\/_mathinput8 textarea").type("{end}{backspace}8{enter}", { force: true })
+      cy.get("#\\/_mathinput9 textarea").type("{end}{backspace}9{enter}", { force: true })
 
 
       cy.log('Test value displayed in browser')
@@ -383,16 +373,6 @@ describe('Mathlist Tag Tests', function () {
       cy.get(child8Anchor).find('.mjx-mrow').eq(0).invoke('text').then((text) => {
         expect(text.trim()).equal('9')
       })
-
-      cy.get("#\\/_mathinput1_input").should('have.value', '1')
-      cy.get("#\\/_mathinput2_input").should('have.value', '2')
-      cy.get("#\\/_mathinput3_input").should('have.value', '3')
-      cy.get("#\\/_mathinput4_input").should('have.value', '4')
-      cy.get("#\\/_mathinput5_input").should('have.value', '5')
-      cy.get("#\\/_mathinput6_input").should('have.value', '6')
-      cy.get("#\\/_mathinput7_input").should('have.value', '7')
-      cy.get("#\\/_mathinput8_input").should('have.value', '8')
-      cy.get("#\\/_mathinput9_input").should('have.value', '9')
 
       cy.log('Test internal values are set to the correct values')
       cy.window().then((win) => {
@@ -444,15 +424,15 @@ describe('Mathlist Tag Tests', function () {
       </mathlist>
     </mathlist>
 
-    <mathinput><copy prop="math1" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math2" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math3" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math4" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math5" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math6" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math7" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math8" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math9" tname="_mathlist1" /></mathinput>
+    <mathinput><bindValueTo><copy prop="math1" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math2" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math3" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math4" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math5" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math6" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math7" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math8" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math9" tname="_mathlist1" /></bindValueTo></mathinput>
 
     ` }, "*");
     });
@@ -507,16 +487,6 @@ describe('Mathlist Tag Tests', function () {
         expect(text.trim()).equal('j')
       })
 
-      cy.get("#\\/_mathinput1_input").should('have.value', 'a')
-      cy.get("#\\/_mathinput2_input").should('have.value', 'q')
-      cy.get("#\\/_mathinput3_input").should('have.value', 'r')
-      cy.get("#\\/_mathinput4_input").should('have.value', 'h')
-      cy.get("#\\/_mathinput5_input").should('have.value', 'b')
-      cy.get("#\\/_mathinput6_input").should('have.value', 'u')
-      cy.get("#\\/_mathinput7_input").should('have.value', 'v')
-      cy.get("#\\/_mathinput8_input").should('have.value', 'i')
-      cy.get("#\\/_mathinput9_input").should('have.value', 'j')
-
       cy.log('Test internal values are set to the correct values')
       cy.window().then((win) => {
         let components = Object.assign({}, win.state.components);
@@ -547,15 +517,15 @@ describe('Mathlist Tag Tests', function () {
 
       cy.log('change values')
 
-      cy.get("#\\/_mathinput1_input").clear().type("1{enter}")
-      cy.get("#\\/_mathinput2_input").clear().type("2{enter}")
-      cy.get("#\\/_mathinput3_input").clear().type("3{enter}")
-      cy.get("#\\/_mathinput4_input").clear().type("4{enter}")
-      cy.get("#\\/_mathinput5_input").clear().type("5{enter}")
-      cy.get("#\\/_mathinput6_input").clear().type("6{enter}")
-      cy.get("#\\/_mathinput7_input").clear().type("7{enter}")
-      cy.get("#\\/_mathinput8_input").clear().type("8{enter}")
-      cy.get("#\\/_mathinput9_input").clear().type("9{enter}")
+      cy.get("#\\/_mathinput1 textarea").type("{end}{backspace}1{enter}", { force: true })
+      cy.get("#\\/_mathinput2 textarea").type("{end}{backspace}2{enter}", { force: true })
+      cy.get("#\\/_mathinput3 textarea").type("{end}{backspace}3{enter}", { force: true })
+      cy.get("#\\/_mathinput4 textarea").type("{end}{backspace}4{enter}", { force: true })
+      cy.get("#\\/_mathinput5 textarea").type("{end}{backspace}5{enter}", { force: true })
+      cy.get("#\\/_mathinput6 textarea").type("{end}{backspace}6{enter}", { force: true })
+      cy.get("#\\/_mathinput7 textarea").type("{end}{backspace}7{enter}", { force: true })
+      cy.get("#\\/_mathinput8 textarea").type("{end}{backspace}8{enter}", { force: true })
+      cy.get("#\\/_mathinput9 textarea").type("{end}{backspace}9{enter}", { force: true })
 
 
       cy.log('Test value displayed in browser')
@@ -586,16 +556,6 @@ describe('Mathlist Tag Tests', function () {
       cy.get(child8Anchor).find('.mjx-mrow').eq(0).invoke('text').then((text) => {
         expect(text.trim()).equal('9')
       })
-
-      cy.get("#\\/_mathinput1_input").should('have.value', '1')
-      cy.get("#\\/_mathinput2_input").should('have.value', '2')
-      cy.get("#\\/_mathinput3_input").should('have.value', '3')
-      cy.get("#\\/_mathinput4_input").should('have.value', '4')
-      cy.get("#\\/_mathinput5_input").should('have.value', '5')
-      cy.get("#\\/_mathinput6_input").should('have.value', '6')
-      cy.get("#\\/_mathinput7_input").should('have.value', '7')
-      cy.get("#\\/_mathinput8_input").should('have.value', '8')
-      cy.get("#\\/_mathinput9_input").should('have.value', '9')
 
       cy.log('Test internal values are set to the correct values')
       cy.window().then((win) => {
@@ -651,18 +611,18 @@ describe('Mathlist Tag Tests', function () {
       <copy tname="mid" />
     </mathlist>
 
-    <mathinput><copy prop="math1" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math2" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math3" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math4" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math5" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math6" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math7" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math8" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math9" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math10" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math11" tname="_mathlist1" /></mathinput>
-    <mathinput><copy prop="math12" tname="_mathlist1" /></mathinput>
+    <mathinput><bindValueTo><copy prop="math1" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math2" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math3" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math4" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math5" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math6" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math7" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math8" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math9" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math10" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math11" tname="_mathlist1" /></bindValueTo></mathinput>
+    <mathinput><bindValueTo><copy prop="math12" tname="_mathlist1" /></bindValueTo></mathinput>
     ` }, "*");
     });
 
@@ -705,7 +665,7 @@ describe('Mathlist Tag Tests', function () {
 
       let mathinputAnchors = []
       for (let i in mapping) {
-        mathinputAnchors.push(`#\\/_mathinput${Number(i) + 1}_input`)
+        mathinputAnchors.push(`#\\/_mathinput${Number(i) + 1} textarea`)
 
       }
 
@@ -715,7 +675,6 @@ describe('Mathlist Tag Tests', function () {
         cy.get(childAnchors[i]).find('.mjx-mrow').eq(0).invoke('text').then((text) => {
           expect(text.trim()).equal(mv(i))
         })
-        cy.get(mathinputAnchors[i]).should('have.value', mv(i))
       }
 
       cy.log('Test internal values are set to the correct values')
@@ -730,7 +689,7 @@ describe('Mathlist Tag Tests', function () {
       for (let changeInd in mapping) {
         cy.window().then((win) => {
           vals[mapping[changeInd]] = Number(changeInd);
-          cy.get(mathinputAnchors[changeInd]).clear().type(changeInd + "{enter}");
+          cy.get(mathinputAnchors[changeInd]).type("{end}{backspace}" + changeInd + "{enter}", { force: true });
 
           cy.log('Test value displayed in browser')
 
@@ -738,7 +697,6 @@ describe('Mathlist Tag Tests', function () {
             cy.get(childAnchors[i]).find('.mjx-mrow').eq(0).invoke('text').then((text) => {
               expect(text.trim()).equal(String(mv(i)))
             })
-            cy.get(mathinputAnchors[i]).should('have.value', String(mv(i)))
           }
 
           cy.log('Test internal values are set to the correct values')
@@ -870,7 +828,7 @@ describe('Mathlist Tag Tests', function () {
       <math name="ee" simplify="none">e+e</math>
       <math name="ff" simplify="full">f+f</math>
     </p>
-    <p><textinput><copy prop="simplify" tname="_mathlist1" /></textinput></p>
+    <p><textinput><bindValueTo><copy prop="simplify" tname="_mathlist1" /></bindValueTo></textinput></p>
     ` }, "*");
     });
 

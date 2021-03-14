@@ -43,9 +43,6 @@ import Rectangle from './components/Rectangle';
 import Circle from './components/Circle';
 import Parabola from './components/Parabola';
 import Curve from './components/Curve';
-import FunctionCurve from './components/FunctionCurve';
-import ParametrizedCurve from './components/ParametrizedCurve';
-import BezierCurve from './components/BezierCurve';
 import BezierControls from './components/BezierControls';
 import ControlVectors from './components/ControlVectors';
 import PointListComponent from './components/abstract/PointListComponent';
@@ -68,14 +65,11 @@ import Graph from './components/Graph';
 import Variables from './components/Variables';
 import Variable from './components/Variable';
 import Function from './components/Function';
-import InterpolatedFunction from './components/InterpolatedFunction';
 import Template from './components/Template';
 import Option from './components/Option';
 import Sequence from './components/Sequence';
 import Map from './components/Map';
 import Sources from './components/Sources';
-import CopySource from './components/CopySource';
-import SourceIndex from './components/SourceIndex';
 import Slider from './components/Slider';
 import Markers from './components/Markers';
 import Constraints from './components/Constraints';
@@ -131,6 +125,7 @@ import SelectByIndex from './components/SelectByIndex';
 import Case from './components/Case';
 import SelectByCondition from './components/SelectByCondition';
 import Empty from './components/Empty';
+import BindValueTo from './components/BindValueTo';
 
 
 //Extended
@@ -196,7 +191,7 @@ const componentTypeArray = [
   Rectangle,
   Circle,
   Parabola,
-  Curve, FunctionCurve, ParametrizedCurve, BezierCurve,
+  Curve,
   BezierControls, ControlVectors,
   Vector,
   Angle,
@@ -209,7 +204,6 @@ const componentTypeArray = [
   Variables,
   Variable,
   Function,
-  InterpolatedFunction,
   Template, Option,
   Sequence,
   Slider,
@@ -221,7 +215,7 @@ const componentTypeArray = [
   Table,
   Markers,
   Panel,
-  Map, Sources, CopySource, SourceIndex,
+  Map, Sources,
   Constraints,
   ConstrainToGrid,
   AttractToGrid,
@@ -261,6 +255,7 @@ const componentTypeArray = [
   Case,
   SelectByCondition,
   Empty,
+  BindValueTo,
 ];
 
 const componentTypeArrayExtended = [

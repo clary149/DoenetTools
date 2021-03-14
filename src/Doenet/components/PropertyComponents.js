@@ -521,6 +521,16 @@ export class Symbolic extends BooleanComponent {
   static rendererType = "boolean";
 }
 
+export class ForceNumeric extends BooleanComponent {
+  static componentType = "forceNumeric";
+  static rendererType = "boolean";
+}
+
+export class ForceSymbolic extends BooleanComponent {
+  static componentType = "forceSymbolic";
+  static rendererType = "boolean";
+}
+
 export class Input extends MathList {
   static componentType = "input";
   static rendererType = "aslist";
@@ -906,18 +916,9 @@ export class delegateCheckWorkToAnswerNumber extends NumberComponent {
   static rendererType = "number";
 }
 
-export class FromSources extends NumberComponent {
-  static componentType = "fromSources";
-  static rendererType = "number";
-}
-
-export class FromMapAncestor extends NumberComponent {
-  static componentType = "fromMapAncestor";
-  static rendererType = "number";
-}
-
 export class Condition extends BooleanComponent {
   static componentType = "condition";
+  static rendererType = "boolean";
 }
 
 export class EncodedGeogebraContent extends TextComponent {

@@ -1,4 +1,6 @@
 import Curve from './Curve';
+import GraphicalComponent from './abstract/GraphicalComponent';
+
 import me from 'math-expressions';
 
 export default class Circle extends Curve {
@@ -57,26 +59,48 @@ export default class Circle extends Curve {
   }
 
 
-  static returnStateVariableDefinitions() {
+  static returnStateVariableDefinitions(args) {
 
-    let stateVariableDefinitions = super.returnStateVariableDefinitions();
+    let stateVariableDefinitions = GraphicalComponent.returnStateVariableDefinitions(args);
 
-    // since circle inherits from curve, we put dummy placeholders for variables
-    stateVariableDefinitions.nVariables = {
+    let curveStateVariableDefinitions = super.returnStateVariableDefinitions(args);
+
+    stateVariableDefinitions.styleDescription = curveStateVariableDefinitions.styleDescription;
+
+
+    stateVariableDefinitions.curveType = {
+      forRenderer: true,
       returnDependencies: () => ({}),
-      definition: () => ({ newValues: { nVariables: 0 } })
+      definition: () => ({ newValues: { curveType: "circle" } })
     }
-    stateVariableDefinitions.variables = {
-      isArray: true,
+
+
+    stateVariableDefinitions.parmax = {
       public: true,
-      componentType: "variable",
-      entryPrefixes: ["var"],
+      componentType: "number",
+      forRenderer: true,
+      returnDependencies: () => ({}),
+      definition: () => ({ newValues: { parmax: NaN } })
+    }
+
+    stateVariableDefinitions.parmin = {
+      public: true,
+      componentType: "number",
+      forRenderer: true,
+      returnDependencies: () => ({}),
+      definition: () => ({ newValues: { parmin: NaN } })
+    }
+
+
+    stateVariableDefinitions.fs = {
+      forRenderer: true,
+      isArray: true,
+      entryPrefixes: ["f"],
+      defaultEntryValue: () => 0,
       returnArraySizeDependencies: () => ({}),
-      returnArraySize() {
-        return [0];
-      },
+      returnArraySize: () => [0],
       returnArrayDependenciesByKey: () => ({}),
-      arrayDefinitionByKey: () => ({})
+      arrayDefinitionByKey: () => ({ newValues: { fs: {} } })
     }
 
     stateVariableDefinitions.nThroughPoints = {

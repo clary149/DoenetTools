@@ -1,5 +1,5 @@
 import React, {useContext, useRef, useEffect, Suspense} from 'react';
-import { IsNavContext } from './Tool/NavPanel'
+import { IsNavContext } from "./Tool/Panels/NavPanel";
 import axios from "axios";
 import nanoid from 'nanoid';
 import './util.css';
@@ -48,7 +48,8 @@ import {
   useRecoilValueLoadable,
   useRecoilStateLoadable,
   useRecoilState,
-  useRecoilValue
+  useRecoilValue,
+  useRecoilCallback
 } from 'recoil';
 
 const fetchDriveUsersQuery = atomFamily({
@@ -149,7 +150,7 @@ export const fetchDriveUsers = selectorFamily({
         // .then((resp)=>{console.log(">>>resp",resp.data) })
 
         break;
-        case "To Owner":
+      case "To Owner":
         set(fetchDriveUsersQuery(driveId),(was)=>{
           let newDriveUsers = {...was}
           let userEntry = {};
@@ -173,8 +174,8 @@ export const fetchDriveUsers = selectorFamily({
         axios.get('/api/saveUserToDrive.php', payload)
         // .then((resp)=>{console.log(">>>resp",resp.data) })
 
-        break;
-        case "To Admin":
+      break;
+      case "To Admin":
         set(fetchDriveUsersQuery(driveId),(was)=>{
           let newDriveUsers = {...was}
           let userEntry = {};
@@ -202,7 +203,7 @@ export const fetchDriveUsers = selectorFamily({
         axios.get('/api/saveUserToDrive.php', payload)
         // .then((resp)=>{console.log(">>>resp",resp.data) })
 
-        break;
+      break;
       default:
         console.log(`type ${instructions.type} not handled`)
     }
@@ -215,7 +216,7 @@ const sortOptions = Object.freeze({
   "LABEL_DESC": "label descending",
   "CREATION_DATE_ASC": "creation date ascending",
   "CREATION_DATE_DESC": "creation date descending"
-});
+}); 
 
 export const globalSelectedNodesAtom = atom({
   key:'globalSelectedNodesAtom',
@@ -231,10 +232,14 @@ const dragStateAtom = atom({
   key: 'dragStateAtom',
   default: {
     isDragging: false,
+    draggedItemsId: null,
     draggedOverDriveId: null,
-    isDraggedOverBreadcrumb: false
+    isDraggedOverBreadcrumb: false,
+    dragShadowDriveId: null,
+    dragShadowParentId: null
   }
 })
+const dragShadowId = "dragShadow";
 
 export default function Drive(props){
   // console.log("=== Drive")
@@ -251,7 +256,7 @@ export default function Drive(props){
     let drives = [];
     for (let type of props.types){
       for (let driveObj of drivesAvailable.contents.driveIdsAndLabels){
-        if (driveObj.type === type){
+        if (driveObj.type === type && driveObj.subType === 'Administrator'){
           drives.push(
           <React.Fragment key={`drive${driveObj.driveId}${isNav}`} ><Router ><Switch>
            <Route path="/" render={(routeprops)=>
@@ -344,12 +349,15 @@ export const folderDictionarySelector = selectorFamily({
   },
   set: (driveIdFolderId) => async ({set,get},instructions)=>{
     const fInfo = get(folderDictionary(driveIdFolderId))
+    const { dragShadowDriveId, dragShadowParentId, draggedItemsId } = get(dragStateAtom);
+    let dragShadowParentFolderInfoObj = null;
+    
     let item = {driveId:driveIdFolderId.driveId,driveInstanceId:instructions.driveInstanceId,itemId:instructions.itemId}
     let newFInfo = {...fInfo}
 
     // console.log(">>>finfo",fInfo)
     switch(instructions.instructionType){
-      case "addItem":
+      case folderInfoSelectorActions.ADD_ITEM:
         const dt = new Date();
         const creationDate = `${
           dt.getFullYear().toString().padStart(2, '0')}-${
@@ -398,6 +406,7 @@ export const folderDictionarySelector = selectorFamily({
             folderInfo:newItem,contentsDictionary:{},contentIds:{[sortOptions.DEFAULT]:[]}
           })
         }
+        const versionId = nanoid();
 
         const data = { 
           driveId:driveIdFolderId.driveId,
@@ -406,6 +415,7 @@ export const folderDictionarySelector = selectorFamily({
           label:instructions.label,
           type:instructions.itemType,
           branchId,
+          versionId,
           sortOrder: newItem.sortOrder,
          };
         const payload = { params: data };
@@ -416,16 +426,15 @@ export const folderDictionarySelector = selectorFamily({
           // throw Error("made up error")
         })
       break;
-      case "sort":
+      case folderInfoSelectorActions.SORT:
         const { sortKey } = instructions;
-
         set(folderDictionary(driveIdFolderId),(old)=>{
           let newObj = JSON.parse(JSON.stringify(old));
           let { contentsDictionary, contentIds } = newObj;
           let newFolderInfo = { ...newObj.folderInfo }
 
           // sort folder child array
-          const sortedFolderChildrenIds = sortItems({sortKey, nodeObjs: contentsDictionary, defaultFolderChildrenIds: contentIds["defaultOrder"]});
+          const sortedFolderChildrenIds = sortItems({sortKey, nodeObjs: contentsDictionary, defaultFolderChildrenIds: contentIds[sortOptions.DEFAULT]});
 
           // update folder data
           newObj.folderInfo = newFolderInfo;
@@ -435,7 +444,17 @@ export const folderDictionarySelector = selectorFamily({
         })
 
         break;
-      case "rename item":
+      case folderInfoSelectorActions.INVALIDATE_SORT_CACHE:
+        set(folderDictionary(driveIdFolderId),(old)=>{
+          let newObj = { ...old };
+          let { contentIds } = old;
+
+          newObj.contentIds = { [sortOptions.DEFAULT]: [...contentIds[sortOptions.DEFAULT]] };
+          return newObj;
+        });
+
+        break;
+      case folderInfoSelectorActions.RENAME_ITEM:
         //Rename Item in folder
         newFInfo["contentsDictionary"] = {...fInfo.contentsDictionary}
         newFInfo["contentsDictionary"][instructions.itemId] = {...fInfo.contentsDictionary[instructions.itemId]};
@@ -474,7 +493,7 @@ export const folderDictionarySelector = selectorFamily({
         const { renamedata } = await axios.get("/api/updateItem.php", renamepayload)
         // .then((resp)=>console.log(">>>resp",resp.data))
       break;
-      case "delete item":
+      case folderInfoSelectorActions.DELETE_ITEM:
         //Remove from folder
         newFInfo["contentsDictionary"] = {...fInfo.contentsDictionary}
         delete newFInfo["contentsDictionary"][instructions.itemId];
@@ -503,7 +522,7 @@ export const folderDictionarySelector = selectorFamily({
         const { deletedata } = await axios.get("/api/deleteItem.php", deletepayload)
 
       break;
-      case "move items":
+      case folderInfoSelectorActions.MOVE_ITEMS:
         //Don't move if nothing selected or draging folder to itself
         let canMove = true;
         if (get(globalSelectedNodesAtom).length === 0){ canMove = false;}
@@ -521,36 +540,62 @@ export const folderDictionarySelector = selectorFamily({
           let newDestinationFolderObj = JSON.parse(JSON.stringify(destinationFolderObj));
           let globalSelectedItems = get(globalSelectedNodesAtom)
           let sourcesByParentFolderId = {};
+          const insertIndex = instructions.index ?? 0;
+          let newSortOrder = "";
 
           for(let gItem of globalSelectedItems){
             //Deselect Item
             let selecteditem = {driveId:gItem.driveId,driveInstanceId:gItem.driveInstanceId,itemId:gItem.itemId}
             set(selectedDriveItemsAtom(selecteditem),false)
 
-            //Prepare to Add to destination
             const oldSourceFInfo = get(folderDictionary({driveId:instructions.driveId,folderId:gItem.parentFolderId}));
-            newDestinationFolderObj["contentsDictionary"][gItem.itemId] = {...oldSourceFInfo["contentsDictionary"][gItem.itemId]}
-            newDestinationFolderObj["contentIds"]["defaultOrder"].push(gItem.itemId)
-
-            //Prepare to Remove from source
+            // get parentInfo from edited cache or derive from oldSource
             let newSourceFInfo = sourcesByParentFolderId[gItem.parentFolderId];
-            if (!newSourceFInfo){
-              newSourceFInfo = JSON.parse(JSON.stringify(oldSourceFInfo));
-              sourcesByParentFolderId[gItem.parentFolderId] = newSourceFInfo;
-            }
-            let index = newSourceFInfo["contentIds"]["defaultOrder"].indexOf(gItem.itemId);
-              newSourceFInfo["contentIds"]["defaultOrder"].splice(index,1)
+            if (!newSourceFInfo) newSourceFInfo = JSON.parse(JSON.stringify(oldSourceFInfo));
+
+            if (gItem.parentFolderId !== instructions.itemId) {  
+              // remove item from original parent contentIds
+              let index = newSourceFInfo["contentIds"]["defaultOrder"].indexOf(gItem.itemId);
+              newSourceFInfo["contentIds"]["defaultOrder"].splice(index, 1)
+
+              // add item to destination dictionary
+              newDestinationFolderObj["contentsDictionary"][gItem.itemId] = {...newSourceFInfo["contentsDictionary"][gItem.itemId]}
+
+              // remove item from original dictionary
               delete newSourceFInfo["contentsDictionary"][gItem.itemId];
-            
+
+              // item must be removed from parent, add to edited cache
+              sourcesByParentFolderId[gItem.parentFolderId] = newSourceFInfo;
+            } else {
+              // make sure item not duplicated in destination contentIds
+              newDestinationFolderObj["contentIds"]["defaultOrder"] = newDestinationFolderObj["contentIds"]["defaultOrder"].filter(itemId => itemId !== gItem.itemId);
+            }
+
+            /* generate and update sortOrder */
+            const cleanDefaultOrder = newDestinationFolderObj["contentIds"]["defaultOrder"].filter(itemId => itemId !== dragShadowId);
+            newSortOrder = getLexicographicOrder({
+              index: insertIndex, 
+              nodeObjs: newDestinationFolderObj.contentsDictionary, 
+              defaultFolderChildrenIds: cleanDefaultOrder 
+            });
+            newDestinationFolderObj["contentsDictionary"][gItem.itemId].sortOrder = newSortOrder;
+            newDestinationFolderObj["contentsDictionary"][gItem.itemId].parentFolderId = instructions.itemId;
+
+            // insert item into contentIds of destination
+            newDestinationFolderObj["contentIds"]["defaultOrder"].splice(insertIndex, 0, gItem.itemId)
           }
           //Add all to destination
-          set(folderDictionary({driveId:instructions.driveId,folderId:instructions.itemId}),newDestinationFolderObj);
+          set(folderDictionary({driveId:instructions.driveId,folderId:instructions.itemId}), newDestinationFolderObj);
           //Clear global selection
           set(globalSelectedNodesAtom,[])
           //Remove from sources
           for (let parentFolderId of Object.keys(sourcesByParentFolderId)){
             set(folderDictionary({driveId:instructions.driveId,folderId:parentFolderId}),sourcesByParentFolderId[parentFolderId])
+            //Mark modified folders as dirty
+            set(folderCacheDirtyAtom({driveId:instructions.driveId, folderId:parentFolderId}), true);
           }
+          //Mark current folder as dirty
+          set(folderCacheDirtyAtom({driveId:instructions.driveId, folderId:instructions.itemId}), true);
 
           let selectedItemIds = [];
           for (let item of globalSelectedItems){
@@ -562,7 +607,8 @@ export const folderDictionarySelector = selectorFamily({
             selectedItemIds, 
             destinationItemId:instructions.itemId,
             destinationParentFolderId:destinationFolderObj.folderInfo.parentFolderId,
-            destinationDriveId:driveIdFolderId.driveId
+            destinationDriveId:driveIdFolderId.driveId,
+            newSortOrder,
           }
           axios.post("/api/moveItems.php", payload)
           .then((resp)=>{
@@ -572,7 +618,7 @@ export const folderDictionarySelector = selectorFamily({
           
         }
       break;
-      case "assignment was published":
+      case folderInfoSelectorActions.PUBLISH_ASSIGNMENT:
         set(folderDictionary(driveIdFolderId),(old)=>{
           let newObj = JSON.parse(JSON.stringify(old));
           let newItemObj = newObj.contentsDictionary[instructions.itemId];          
@@ -584,7 +630,7 @@ export const folderDictionarySelector = selectorFamily({
         })
       
         break;
-      case "content was published":
+      case folderInfoSelectorActions.PUBLISH_CONTENT:
         set(folderDictionary(driveIdFolderId),(old)=>{
           let newObj = JSON.parse(JSON.stringify(old));
           let newItemObj = newObj.contentsDictionary[instructions.itemId];
@@ -593,7 +639,7 @@ export const folderDictionarySelector = selectorFamily({
         })
         
       break;
-      case "assignment to content":
+      case folderInfoSelectorActions.ASSIGNMENT_TO_CONTENT:
         set(folderDictionary(driveIdFolderId),(old)=>{
           let newObj = JSON.parse(JSON.stringify(old));
           let newItemObj = newObj.contentsDictionary[instructions.itemId];
@@ -602,7 +648,7 @@ export const folderDictionarySelector = selectorFamily({
         })
      
       break;
-      case "assignment title update":
+      case folderInfoSelectorActions.UPDATE_ASSIGNMENT_TITLE:
         set(folderDictionary(driveIdFolderId),(old)=>{
           let newObj = JSON.parse(JSON.stringify(old));
           let newItemObj = newObj.contentsDictionary[instructions.itemId];          
@@ -612,8 +658,134 @@ export const folderDictionarySelector = selectorFamily({
           return newObj;
         })
         break;
+      case folderInfoSelectorActions.INSERT_DRAG_SHADOW:
+        if (!draggedItemsId || draggedItemsId?.has(instructions.itemId)) {
+          set(folderDictionarySelector(driveIdFolderId), {instructionType: folderInfoSelectorActions.REMOVE_DRAG_SHADOW});
+          return;
+        }
+
+        const dragShadow = {
+          assignmentId: null,
+          branchId: null,
+          contentId: null,
+          creationDate: "",
+          isPublished: "0",
+          itemId: dragShadowId,
+          itemType: "DragShadow",
+          label: "",
+          parentFolderId: instructions.parentId,
+          url: null,
+          urlDescription: null,
+          urlId: null,
+        }
+        const insertPosition = instructions.position;
+        
+        const dropTargetParentId = instructions.parentId;
+        if (dragShadowDriveId && dragShadowParentId) dragShadowParentFolderInfoObj = get(folderDictionarySelector({ driveId: dragShadowDriveId, folderId: dragShadowParentId}));
+
+        // remove dragShadowId from dragShadowParentId (contentDictionary, contentIds)
+        if (dragShadowParentFolderInfoObj) {
+          set(folderDictionary({driveId: driveIdFolderId.driveId, folderId: dragShadowParentId}),(old)=>{
+            let newObj = {...old};
+            let newDefaultOrder = [...newObj.contentIds[sortOptions.DEFAULT]];
+            newDefaultOrder = newDefaultOrder.filter(itemId => itemId !== dragShadowId);
+            const defaultOrderObj = {[sortOptions.DEFAULT]: newDefaultOrder};
+            newObj.contentIds = defaultOrderObj;
+            return newObj;
+          })
+        }
+
+        if (insertPosition === "intoCurrent") {
+          // insert dragShadowId into driveIdFolderId.folderId (contentDictionary, contentIds)
+          set(folderDictionary(driveIdFolderId), (old)=>{
+            let newObj = {...old};
+            let newContentsDictionary = {...old.contentsDictionary};
+            newContentsDictionary[dragShadowId] = dragShadow;
+            let newDefaultOrder = [...newObj.contentIds[sortOptions.DEFAULT]];
+            if (dragShadowParentId === dropTargetParentId) newDefaultOrder = newDefaultOrder.filter(itemId => itemId !== dragShadowId);
+            newDefaultOrder.splice(0, 0, dragShadowId);
+            const defaultOrderObj = {[sortOptions.DEFAULT]: newDefaultOrder};
+            newObj.contentIds = defaultOrderObj;
+            newObj.contentsDictionary = newContentsDictionary;
+            return newObj;
+          })
+
+          // update dragStateAtom.dragShadowParentId to dropTargetParentId
+          set(dragStateAtom, (old) => {
+            return {
+              ...old,
+              dragShadowDriveId: driveIdFolderId.driveId,
+              dragShadowParentId: driveIdFolderId.folderId
+            }
+          })
+        } else {
+          // insert dragShadowId into dropTargetParent (contentDictionary, contentIds)
+          set(folderDictionary({driveId: driveIdFolderId.driveId, folderId: dropTargetParentId}),(old)=>{
+            let newObj = {...old};
+            let newContentsDictionary = {...old.contentsDictionary};
+            newContentsDictionary[dragShadowId] = dragShadow;
+            let newDefaultOrder = [...newObj.contentIds[sortOptions.DEFAULT]];
+            if (dragShadowParentId === dropTargetParentId) newDefaultOrder = newDefaultOrder.filter(itemId => itemId !== dragShadowId);
+            let index = newDefaultOrder.indexOf(instructions.itemId);
+            if (insertPosition === "afterCurrent") index += 1;
+            newDefaultOrder.splice(index, 0, dragShadowId);
+            const defaultOrderObj = {[sortOptions.DEFAULT]: newDefaultOrder};
+            newObj.contentIds = defaultOrderObj;
+            newObj.contentsDictionary = newContentsDictionary;
+            return newObj;
+          })
+          
+          // update dragStateAtom.dragShadowParentId to dropTargetParentId
+          set(dragStateAtom, (old) => {
+            return {
+              ...old,
+              dragShadowDriveId: driveIdFolderId.driveId,
+              dragShadowParentId: dropTargetParentId
+            }
+          })
+        }
+
+      break;
+      case folderInfoSelectorActions.REMOVE_DRAG_SHADOW:
+        // check if drag shadow valid
+        if (!dragShadowDriveId || !dragShadowParentId) return;
+
+        set(folderDictionary({driveId: dragShadowDriveId, folderId: dragShadowParentId}),(old)=>{
+          let newObj = {...old};
+          let newDefaultOrder = [...newObj.contentIds[sortOptions.DEFAULT]];
+          newDefaultOrder = newDefaultOrder.filter(itemId => itemId !== dragShadowId);
+          const defaultOrderObj = {[sortOptions.DEFAULT]: newDefaultOrder};
+          newObj.contentIds = defaultOrderObj;
+          return newObj;
+        })
+        set(dragStateAtom, (old) => {
+          return {
+            ...old,
+            dragShadowDriveId: null,
+            dragShadowParentId: null
+          }
+        })
+      break;
+      case folderInfoSelectorActions.REPLACE_DRAG_SHADOW:
+        // check if drag shadow valid
+        if (!dragShadowDriveId || !dragShadowParentId) return;
+
+        if (dragShadowDriveId && dragShadowParentId) dragShadowParentFolderInfoObj = get(folderDictionarySelector({ driveId: dragShadowDriveId, folderId: dragShadowParentId}));
+        let dragShadowParentDefaultOrder = dragShadowParentFolderInfoObj?.contentIds[sortOptions.DEFAULT];
+        let insertIndex = dragShadowParentDefaultOrder?.indexOf(dragShadowId);
+
+        if (insertIndex >= 0) {
+          const instructions = {
+            instructionType: folderInfoSelectorActions.MOVE_ITEMS,
+            driveId: dragShadowDriveId,
+            itemId: dragShadowParentId,
+            index: insertIndex
+          }
+          set(folderDictionarySelector(driveIdFolderId), instructions);
+        }
+      break;
       default:
-        console.warn(`Intruction ${instructions.instructionType} not currently handled`)
+        console.warn(`Instruction ${instructions.instructionType} not currently handled`)
     }
     
   }
@@ -628,42 +800,56 @@ const folderSortOrderAtom = atomFamily({
   default:sortOptions.DEFAULT
 })
 
-const folderSortOrderSelector = selectorFamily({
-  key:"folderSortOrderSelector",
-  get:(driveInstanceIdFolderId)=>({get})=>{
-    return get(folderSortOrderAtom(driveInstanceIdFolderId));
-  },
-  set:(driveInstanceIdFolderId) => ({set}, sortOrder)=>{
-    set(folderSortOrderAtom(driveInstanceIdFolderId), sortOrder); 
-  }
+const folderCacheDirtyAtom = atomFamily({
+  key:"foldedCacheDirtyAtom",
+  default:false
 })
+
+export const folderInfoSelectorActions = Object.freeze({
+  ADD_ITEM: "addItem",
+  DELETE_ITEM: "delete item",
+  MOVE_ITEMS: "move items",
+  SORT: "sort",
+  PUBLISH_ASSIGNMENT: "assignment was published",
+  PUBLISH_CONTENT: "content was published",
+  ASSIGNMENT_TO_CONTENT: "assignment to content",
+  UPDATE_ASSIGNMENT_TITLE: "assignment title update",
+  INSERT_DRAG_SHADOW: "insertDragShadow",
+  REMOVE_DRAG_SHADOW: "removeDragShadow",
+  REPLACE_DRAG_SHADOW: "replaceDragShadow",
+  INVALIDATE_SORT_CACHE: "invalidate sort cache",
+  RENAME_ITEM: "rename item"
+});
 
 export const folderInfoSelector = selectorFamily({
   get:(driveIdInstanceIdFolderId)=>({get})=>{
     const { driveId, folderId } = driveIdInstanceIdFolderId;
     
     const {folderInfo, contentsDictionary, contentIds} = get(folderDictionarySelector({driveId, folderId}))
-    const folderSortOrder = get(folderSortOrderSelector(driveIdInstanceIdFolderId))
-    const contentIdsArr = contentIds[folderSortOrder] ?? [];
-    
+    const folderSortOrder = get(folderSortOrderAtom(driveIdInstanceIdFolderId))
+    let contentIdsArr = contentIds[folderSortOrder] ?? [];
+
+    const sortedContentIdsNotInCache = !contentIdsArr.length && contentIds[sortOptions.DEFAULT].length;
+    if (sortedContentIdsNotInCache) {
+      contentIdsArr = sortItems({sortKey: folderSortOrder, nodeObjs: contentsDictionary, defaultFolderChildrenIds: contentIds[sortOptions.DEFAULT]});
+    }
+
     let newFolderInfo = { ...folderInfo };
     newFolderInfo.sortBy = folderSortOrder
-    
     return {folderInfo: newFolderInfo, contentsDictionary, contentIdsArr};
   },
   set: (driveIdInstanceIdFolderId) => async ({set,get}, instructions)=>{
     const { driveId, folderId } = driveIdInstanceIdFolderId;
 
-    const dirtyActions = new Set(["addItem", "delete item"])
+    const dirtyActions = new Set([folderInfoSelectorActions.ADD_ITEM, folderInfoSelectorActions.DELETE_ITEM])
     if (dirtyActions.has(instructions.instructionType)) {
-      set(folderSortOrderSelector(driveIdInstanceIdFolderId), sortOptions.DEFAULT);
+      set(folderSortOrderAtom(driveIdInstanceIdFolderId), sortOptions.DEFAULT);
     }
 
     switch(instructions.instructionType){
-      case "sort":
+      case folderInfoSelectorActions.SORT:
         const {contentIds} = get(folderDictionarySelector({driveId, folderId}))
-        
-        set(folderSortOrderSelector(driveIdInstanceIdFolderId), instructions.sortKey);
+        set(folderSortOrderAtom(driveIdInstanceIdFolderId), instructions.sortKey);
         
         // if sortOrder not already cached in folderDictionary
         if (!contentIds[instructions.sortKey]) {
@@ -723,17 +909,16 @@ const getLexicographicOrder = ({ index, nodeObjs, defaultFolderChildrenIds=[] })
   if (defaultFolderChildrenIds.length !== 0) {
     if (index <= 0) {
       nextItemId = defaultFolderChildrenIds[0];
-    } else if (index >= defaultFolderChildrenIds.length - 1) {
+    } else if (index >= defaultFolderChildrenIds.length) {
       prevItemId = defaultFolderChildrenIds[defaultFolderChildrenIds.length - 1];
     } else {
-      nextItemId = defaultFolderChildrenIds[index];
       prevItemId = defaultFolderChildrenIds[index - 1];
+      nextItemId = defaultFolderChildrenIds[index];
     }
     
     if (nodeObjs[prevItemId]) prevItemOrder = nodeObjs?.[prevItemId]?.sortOrder ?? "";
     if (nodeObjs[nextItemId]) nextItemOrder = nodeObjs?.[nextItemId]?.sortOrder ?? "";
   }
-
   const sortOrder = getSortOrder(prevItemOrder, nextItemOrder);
   return sortOrder;
 }
@@ -800,8 +985,7 @@ function DriveRouted(props){
   </>
 }
 
-
-let fetchDrivesQuery = atom({
+export const fetchDrivesQuery = atom({
   key:"fetchDrivesQuery",
   default: selector({
     key:"fetchDrivesQuery/Default",
@@ -809,6 +993,7 @@ let fetchDrivesQuery = atom({
     const { data } = await axios.get(
       `/api/loadAvailableDrives.php`
     );
+    // console.log(">>>data",data)
     return data
   },
  
@@ -896,7 +1081,8 @@ export const fetchDrivesSelector = selector({
         label:labelTypeDriveIdColorImage.label,
         type: "course",
         image:labelTypeDriveIdColorImage.image,
-        color:labelTypeDriveIdColorImage.color
+        color:labelTypeDriveIdColorImage.color,
+        subType:"Administrator"
       }
       newDriveData.driveIdsAndLabels.unshift(newDrive)
     set(fetchDrivesQuery,newDriveData)
@@ -1007,6 +1193,9 @@ const folderOpenAtom = atomFamily({
 
 const folderOpenSelector = selectorFamily({
   key:"folderOpenSelector",
+  get:(driveInstanceIdItemId)=>({get})=>{
+    return get(folderOpenAtom(driveInstanceIdItemId));
+  },
   set:(driveInstanceIdDriveIdItemId) => ({get,set})=>{
     const isOpen = get(folderOpenAtom(driveInstanceIdDriveIdItemId))
     if (isOpen){ 
@@ -1036,27 +1225,37 @@ function Folder(props){
 
   let itemId = props?.folderId;
   if (!itemId){ itemId = props.driveId}
-  //Used to determine range of items in Shift Click
-  const isOpen = useRecoilValue(folderOpenAtom({driveInstanceId:props.driveInstanceId,driveId:props.driveId,itemId:props.folderId}))
-  const toggleOpen = useSetRecoilState(folderOpenSelector({driveInstanceId:props.driveInstanceId,driveId:props.driveId,itemId:props.folderId}))
-
   let history = useHistory();
   
   const [folderInfoObj, setFolderInfo] = useRecoilStateLoadable(folderInfoSelector({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.folderId}))
-
   // const [folderInfoObj, setFolderInfo] = useRecoilStateLoadable(folderDictionarySelector({driveId:props.driveId,folderId:props.folderId}))
   const {folderInfo, contentsDictionary, contentIdsArr} = folderInfoObj.contents;
-  const { onDragStart, onDrag, onDragOverContainer, onDragEnd, renderDragGhost } = useDnDCallbacks();
-  const { dropState, dropActions } = useContext(DropTargetsContext);
+  const { onDragStart, onDrag, onDragOverContainer, onDragEnd, renderDragGhost, registerDropTarget, unregisterDropTarget } = useDnDCallbacks();
+  const { dropState } = useContext(DropTargetsContext);
   const [dragState] = useRecoilState(dragStateAtom);
-  
-  // console.log(`=== 📁 ${folderInfo?.label}`)
+  const [folderCacheDirty, setFolderCacheDirty] = useRecoilState(folderCacheDirtyAtom({driveId:props.driveId, folderId:props.folderId}))
+
+  const parentFolderSortOrder = useRecoilValue(folderSortOrderAtom({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.item?.parentFolderId}))
+  const parentFolderSortOrderRef = useRef(parentFolderSortOrder);  // for memoized DnD callbacks
   const [selectedDrive, setSelectedDrive] = useRecoilState(selectedDriveAtom); 
   const setSelected = useSetRecoilState(selectedDriveItems({driveId:props.driveId,driveInstanceId:props.driveInstanceId,itemId})); 
   const isSelected = useRecoilValue(selectedDriveItemsAtom({driveId:props.driveId,driveInstanceId:props.driveInstanceId,itemId})); 
-  const deleteItem = (itemId) =>{setFolderInfo({instructionType:"delete item",driveInstanceId:props.driveInstanceId,itemId})}
+  const deleteItem = (itemId) =>{setFolderInfo({instructionType: folderInfoSelectorActions.DELETE_ITEM,driveInstanceId:props.driveInstanceId,itemId})}
   const globalSelectedNodes = useRecoilValue(globalSelectedNodesAtom); 
   const clearSelections = useSetRecoilState(clearDriveAndItemSelections);
+
+  //Used to determine range of items in Shift Click
+  const isOpen = useRecoilValue(folderOpenAtom({driveInstanceId:props.driveInstanceId,driveId:props.driveId,itemId:props.folderId}))
+  const toggleOpen = useSetRecoilState(folderOpenSelector({driveInstanceId:props.driveInstanceId,driveId:props.driveId,itemId:props.folderId}))
+  const isOpenRef = useRef(isOpen);  // for memoized DnD callbacks
+  const isSelectedRef = useRef(isSelected);  // for memoized DnD callbacks
+
+  //Set only when parentFolderId changes
+  const setInstanceParentId = useSetRecoilState(driveInstanceParentFolderIdAtom(props.driveInstanceId));
+  useEffect(() => {
+    setInstanceParentId(props.pathItemId);
+  },[props.pathItemId])
+
 
   const indentPx = 20;
   let bgcolor = "#f6f8ff";
@@ -1067,10 +1266,28 @@ function Folder(props){
   if (isSelected) { bgcolor = "hsl(209,54%,82%)";  }
   if (dropState.activeDropTargetId === itemId) { bgcolor = "hsl(209,54%,82%)"; }
   if (isSelected && dragState.isDragging) { bgcolor = "#e2e2e2"; }  
+
+  /* Update refs for variables used in DnD callbacks to eliminate re-registration */
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    isSelectedRef.current = isSelected;
+  }, [isOpen, isSelected])
+
+  useEffect(() => {
+    parentFolderSortOrderRef.current = parentFolderSortOrder;
+  }, [parentFolderSortOrder])
+
+  /* Cache invalidation when folder is dirty */
+  useEffect(() => {
+    if (folderCacheDirty) {
+      setFolderInfo({ instructionType: folderInfoSelectorActions.INVALIDATE_SORT_CACHE});
+      setFolderCacheDirty(false);
+    }    
+  }, [folderCacheDirty])
+
   if (props.isNav && itemId === props.pathItemId) {borderSide = "8px solid #1A5A99";}
  
   if (folderInfoObj.state === "loading"){ return null;}
-  // console.log(folderInfo.label, folderInfo?.sortBy, contentIdsArr)
  
   let openCloseText = isOpen ? <FontAwesomeIcon icon={faChevronDown}/> : <FontAwesomeIcon icon={faChevronRight}/>;
 
@@ -1086,10 +1303,61 @@ function Folder(props){
   const sortHandler = ({ sortKey }) => {
     // dispatch sort instruction
     setFolderInfo({
-      instructionType:"sort",
+      instructionType: folderInfoSelectorActions.SORT,
       sortKey: sortKey
     });
   };
+
+  const onDragOver = ({x, y, dropTargetRef}) => {
+    const dropTargetTopY = dropTargetRef?.offsetTop;
+    const dropTargetHeight = dropTargetRef?.clientHeight;
+    const cursorY = y;
+    const cursorArea = (cursorY - dropTargetTopY) / dropTargetHeight;
+    // open folder if initially closed
+    if (!isOpenRef.current && !props.isNav && !isSelectedRef.current) {
+      toggleOpen();
+    }
+    
+    if (parentFolderSortOrderRef.current === sortOptions.DEFAULT) {
+      if (cursorArea < 0.5) {
+        // insert shadow to top of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "beforeCurrent",
+          itemId: props.folderId,
+          parentId: props.item?.parentFolderId
+        });
+      }else if (cursorArea < 1.0000) {
+        // insert shadow to bottom of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "afterCurrent",
+          itemId: props.folderId,
+          parentId: props.item?.parentFolderId
+        });
+      }
+    } else {
+      setFolderInfo({instructionType: folderInfoSelectorActions.REMOVE_DRAG_SHADOW});
+    }
+
+    onDragOverContainer({ id: props.folderId, driveId: props.driveId });
+  }
+
+  const onDragHover = () => {
+    setFolderInfo({
+      instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+      position: "intoCurrent"
+    });
+  }
+
+  const onDrop = () => {
+  }
+
+  const onDragEndCb = () => {
+    setFolderInfo({instructionType: folderInfoSelectorActions.REPLACE_DRAG_SHADOW});
+    setFolderInfo({instructionType: folderInfoSelectorActions.REMOVE_DRAG_SHADOW});
+    onDragEnd();
+  }
 
   const sortNodeButtonFactory = ({ buttonLabel, sortKey, sortHandler }) => {
     return <button
@@ -1261,7 +1529,7 @@ function Folder(props){
       className={draggableClassName}
       onDragStart={() => onDragStart({ nodeId: props.folderId, driveId: props.driveId, onDragStartCallback })}
       onDrag={onDrag}
-      onDragEnd={onDragEnd}
+      onDragEnd={onDragEndCb}
       ghostElement={renderDragGhost(props.folderId, folder)}
       >
       { folder } 
@@ -1272,37 +1540,39 @@ function Folder(props){
   folder = <WithDropTarget
     key={`wdtnode${props.driveInstanceId}${props.folderId}`} 
     id={dropTargetId}
-    registerDropTarget={dropActions.registerDropTarget} 
-    unregisterDropTarget={dropActions.unregisterDropTarget}
+    registerDropTarget={registerDropTarget} 
+    unregisterDropTarget={unregisterDropTarget}
     dropCallbacks={{
-      onDragOver: () => onDragOverContainer({ id: props.folderId, driveId: props.driveId }),
-      onDrop: () => {setFolderInfo({instructionType: "move items", driveId: props.driveId, itemId: dropTargetId});}
+      onDragOver: onDragOver,
+      onDragHover: onDragHover,
+      onDrop: onDrop
     }}
     >
     { folder } 
   </WithDropTarget>
 
-  if (props.driveObj && !props.isNav) {
-    const sortButtons = <div style={{marginLeft: "2.5vw"}}>
-      {sortNodeButtonFactory({buttonLabel: "Sort Default", sortKey: sortOptions.DEFAULT, sortHandler})} 
-      {sortNodeButtonFactory({buttonLabel: "Sort Label ASC", sortKey: sortOptions.LABEL_ASC, sortHandler})} 
-      {sortNodeButtonFactory({buttonLabel: "Sort Label DESC", sortKey: sortOptions.LABEL_DESC, sortHandler})} 
-      {sortNodeButtonFactory({buttonLabel: "Sort Date ASC", sortKey: sortOptions.CREATION_DATE_ASC, sortHandler})} 
-      {sortNodeButtonFactory({buttonLabel: "Sort Date DESC", sortKey: sortOptions.CREATION_DATE_DESC, sortHandler})}
-    </div>;
+  // if (props.driveObj && !props.isNav) {
+  //   const sortButtons = <div style={{marginLeft: "2.5vw"}}>
+  //     {sortNodeButtonFactory({buttonLabel: "Sort Custom", sortKey: sortOptions.DEFAULT, sortHandler})} 
+  //     {sortNodeButtonFactory({buttonLabel: "Sort Label ASC", sortKey: sortOptions.LABEL_ASC, sortHandler})} 
+  //     {sortNodeButtonFactory({buttonLabel: "Sort Label DESC", sortKey: sortOptions.LABEL_DESC, sortHandler})} 
+  //     {sortNodeButtonFactory({buttonLabel: "Sort Date ASC", sortKey: sortOptions.CREATION_DATE_ASC, sortHandler})} 
+  //     {sortNodeButtonFactory({buttonLabel: "Sort Date DESC", sortKey: sortOptions.CREATION_DATE_DESC, sortHandler})}
+  //   </div>;
 
-    folder = <>
-      {sortButtons}
-      {folder}
+  //   folder = <>
+  //     {sortButtons}
+  //     {folder}
       
-    </>;
-  }
+  //   </>;
+  // }
 
   if (isOpen || (props.driveObj && !props.rootCollapsible)){
     let dictionary = contentsDictionary;
     items = [];
     for (let itemId of contentIdsArr){
       let item = dictionary[itemId];
+      if (!item) continue;
       // console.log(">>>item",item)
       if (props.hideUnpublished && item.isPublished === "0"){
         //hide item
@@ -1315,7 +1585,8 @@ function Folder(props){
           items.push(<Folder 
             key={`item${itemId}${props.driveInstanceId}`} 
             driveId={props.driveId} 
-            folderId={item.itemId} 
+            folderId={itemId} 
+            item={item} 
             indentLevel={props.indentLevel+1}  
             driveInstanceId={props.driveInstanceId}
             route={props.route}
@@ -1335,6 +1606,7 @@ function Folder(props){
             key={`item${itemId}${props.driveInstanceId}`} 
             driveId={props.driveId} 
             folderId={item.itemId} 
+            item={item} 
             indentLevel={props.indentLevel+1}  
             driveInstanceId={props.driveInstanceId}
             route={props.route}
@@ -1353,7 +1625,7 @@ function Folder(props){
               key={`item${itemId}${props.driveInstanceId}`} 
               driveId={props.driveId} 
               item={item} 
-              indentLevel={props.indentLevel+1}  
+              indentLevel={props.indentLevel+1}
               driveInstanceId={props.driveInstanceId}
               route={props.route}
               isNav={props.isNav} 
@@ -1374,6 +1646,12 @@ function Folder(props){
               pathItemId={props.pathItemId}
               doubleClickCallback={props.doenetMLDoubleClickCallback}
               deleteItem={deleteItem}
+            />)
+          break;
+          case "DragShadow":
+            items.push(<DragShadow 
+              key={`dragShadow${itemId}${props.driveInstanceId}`} 
+              indentLevel={props.indentLevel+1}
             />)
           break;
           default:
@@ -1406,6 +1684,18 @@ const EmptyNode =  React.memo(function Node(props){
   }} ><div className="noselect" style={{justifyContent: "center"}}>EMPTY</div></div>)
 })
 
+const DragShadow =  React.memo(function Node(props){
+  const indentPx = 20;
+  return (<div style={{
+    width: "840px",
+    padding: "8px",
+    backgroundColor: "#8dff45",
+    margin: "2px",
+    marginLeft: `${props.indentLevel * indentPx}px`,
+  
+  }} ><div className="noselect" style={{marginLeft: "50px"}}>Drag shadow</div></div>)
+})
+
 function LogVisible(props){
   const globalSelected = useRecoilValue(globalSelectedNodesAtom);
   console.log("globalSelected",globalSelected)
@@ -1435,6 +1725,17 @@ export const clearDriveAndItemSelections = selector({
   }
 })
 
+//key: driveInstanceId
+const driveInstanceParentFolderIdAtom = atomFamily({
+  key:"driveInstanceParentFolderIdAtom",
+  default: selectorFamily({
+    key:"driveInstanceParentFolderIdAtom/Default",
+    get: (driveInstanceId) => ()=>{
+    return driveInstanceId
+  }
+  })
+})
+
 const selectedDriveItems = selectorFamily({
   key:"selectedDriveItems",
   // get:(driveIdDriveInstanceIdItemId) =>({get})=>{ 
@@ -1444,56 +1745,29 @@ const selectedDriveItems = selectorFamily({
     const globalSelected = get(globalSelectedNodesAtom);
     const isSelected = get(selectedDriveItemsAtom(driveIdDriveInstanceIdItemId))
     const {driveId,driveInstanceId,itemId} = driveIdDriveInstanceIdItemId;
-    function findRange({clickNeedle,lastNeedle,foundClickNeedle=false,foundLastNeedle=false,currentFolderId,foldersSearched=[]}){
-      foldersSearched.push(currentFolderId);
-      let itemIdsParentFolderIdsInRange = [];
-      let folder = get(folderInfoSelector({driveId, instanceId:driveInstanceId, folderId:currentFolderId}))      
+    let lastSelectedItem = globalSelected[globalSelected.length-1];
 
-      for (let itemId of folder.contentIdsArr){
-        if (foundClickNeedle && foundLastNeedle){
-          break;
-        }
-        if (clickNeedle === itemId){ foundClickNeedle = true;}
-        if (lastNeedle === itemId){ foundLastNeedle = true;}
-        //Add itemId if inside the range or an end point then add to itemIds
-        if (foundClickNeedle || foundLastNeedle){
-          itemIdsParentFolderIdsInRange.push({itemId,parentFolderId:currentFolderId});
-        }
-        
-        if (folder.contentsDictionary[itemId].itemType === "Folder"){
-          const isOpen = get(folderOpenAtom({driveInstanceId,driveId,itemId}))
-          //Recurse if open
+    function buildItemIdsAndParentIds({parentFolderId,driveInstanceId,driveId,itemIdArr=[],parentFolderIdArr=[]}){
+      const folderObj = get(folderDictionary({driveId,folderId:parentFolderId}))
+      for (let itemId of folderObj.contentIds.defaultOrder){
+        itemIdArr.push(itemId);
+        parentFolderIdArr.push(parentFolderId);
+        if (folderObj.contentsDictionary[itemId].itemType === 'Folder'){
+          const isOpen = get(folderOpenAtom({driveInstanceId,driveId,itemId}));
           if (isOpen){
-            let [subItemIdsParentFolderIdsInRange,subFoundClickNeedle,subFoundLastNeedle] = 
-            findRange({clickNeedle,lastNeedle,foundClickNeedle,foundLastNeedle,currentFolderId:itemId,foldersSearched});
-            itemIdsParentFolderIdsInRange.push(...subItemIdsParentFolderIdsInRange);
-            if (subFoundClickNeedle){foundClickNeedle = true;}
-            if (subFoundLastNeedle){foundLastNeedle = true;}
+            const [folderItemIdArr,folderParentFolderIdsArr] = buildItemIdsAndParentIds({parentFolderId:itemId,driveInstanceId,driveId})
+            itemIdArr = [...itemIdArr,...folderItemIdArr];
+            parentFolderIdArr = [...parentFolderIdArr,...folderParentFolderIdsArr];
           }
-          
         }
-        
-       
-        if (foundClickNeedle && foundLastNeedle){
-          break;
-        }
-        
       }
-      if (!foundClickNeedle && foundLastNeedle && !foldersSearched.includes(folder.folderInfo.parentFolderId)){
-        //search parent folder
-        
-        // let [parentItemIdsParentFolderIdsInRange,parentFoundClickNeedle,parentFoundLastNeedle] = 
-        //     findRange({clickNeedle,lastNeedle,foundClickNeedle,foundLastNeedle,currentFolderId:folder.folderInfo.parentFolderId,foldersSearched});
-        //     itemIdsParentFolderIdsInRange.push(...parentItemIdsParentFolderIdsInRange);
-            // if (parentFoundClickNeedle){foundClickNeedle = true;}
-            // if (parentFoundLastNeedle){foundLastNeedle = true;}
-      }
-      
-      return [itemIdsParentFolderIdsInRange,foundClickNeedle,foundLastNeedle,folder.folderInfo.parentFolderId];
+      return [itemIdArr,parentFolderIdArr];
     }
+
     switch (instruction.instructionType) {
       case "one item":
         if (!isSelected){
+          //Deselect all global selected
           for (let itemObj of globalSelected){
             let itemInfo = { ...itemObj };
             delete itemInfo["parentFolderId"];
@@ -1503,13 +1777,30 @@ const selectedDriveItems = selectorFamily({
           let itemInfo = {...driveIdDriveInstanceIdItemId}
           itemInfo["parentFolderId"] = instruction.parentFolderId;
           set(globalSelectedNodesAtom,[itemInfo])
+
+          //Select contents of open folders??
+          // const parentFolder = get(folderDictionary({driveId,folderId:instruction.parentFolderId}))
+          // const itemType = parentFolder.contentsDictionary[itemId].itemType;
+          // if (itemType === 'Folder'){
+          //   let isOpen = get(folderOpenAtom(driveIdDriveInstanceIdItemId));
+          //   console.log(">>>isOpen",isOpen)
+          // }
         }
         break;
       case "add item":
         if (isSelected){
           set(selectedDriveItemsAtom(driveIdDriveInstanceIdItemId),false)
           let newGlobalSelected = [...globalSelected];
-          const index = newGlobalSelected.indexOf(driveIdDriveInstanceIdItemId)
+          let index;
+          for (const [i,obj] of newGlobalSelected.entries()){
+            if (obj.driveId === driveId &&
+              obj.itemId === itemId &&
+              obj.driveInstanceId === driveInstanceId
+              ){
+                index = i;
+                break;
+              }
+          }
           newGlobalSelected.splice(index,1)
           set(globalSelectedNodesAtom,newGlobalSelected);
         }else{
@@ -1520,39 +1811,53 @@ const selectedDriveItems = selectorFamily({
         }
         break;
       case "range to item":
-        if (globalSelected.length === 0){
+        //select one if driveInstanceId doesn't match
+        if (globalSelected.length === 0 || lastSelectedItem?.driveInstanceId !== driveInstanceId){
           //No previous items selected so just select this one
           set(selectedDriveItemsAtom(driveIdDriveInstanceIdItemId),true)
           let itemInfo = {...driveIdDriveInstanceIdItemId}
           itemInfo["parentFolderId"] = instruction.parentFolderId;
           set(globalSelectedNodesAtom,[itemInfo])
         }else{
-          let lastSelectedItem = globalSelected[globalSelected.length-1];
-          //TODO: Just select one if driveInstanceId doesn't match
-          //Starting at root build array of visible items in order
-          let [selectTheseItemIdParentFolderIds] = findRange({
-            currentFolderId:lastSelectedItem.parentFolderId,
-            lastNeedle:lastSelectedItem.itemId,
-            clickNeedle:driveIdDriveInstanceIdItemId.itemId});
-           
-          let addToGlobalSelected = []
-          for (let itemIdParentFolderIdsToSelect of selectTheseItemIdParentFolderIds){
-            let itemKey = {...driveIdDriveInstanceIdItemId}
-            itemKey.itemId = itemIdParentFolderIdsToSelect.itemId;
-            let forGlobal = {...itemKey}
-            forGlobal.parentFolderId = itemIdParentFolderIdsToSelect.parentFolderId;
-            if (!get(selectedDriveItemsAtom(itemKey))){
-              set(selectedDriveItemsAtom(itemKey),true)
-              addToGlobalSelected.push(forGlobal);
-            }
-          }
-          //TODO: Does this have the parentFolderId?
-          set(globalSelectedNodesAtom,[...globalSelected,...addToGlobalSelected])
+          const driveInstanceParentFolderId = get(driveInstanceParentFolderIdAtom(driveInstanceId))
+          let [arrayOfItemIds,parentFolderIds] = buildItemIdsAndParentIds({parentFolderId:driveInstanceParentFolderId,driveInstanceId,driveId})
 
+          let foundClickedItem = false;
+          let foundLastItem = false;
+          let addToGlobalSelected = [];
+          let needToReverseOrder = false;
+          for (const [i,testItemId] of arrayOfItemIds.entries()){
+            if (!foundLastItem && testItemId === lastSelectedItem.itemId){
+              foundLastItem = true;
+              if (foundClickedItem){needToReverseOrder = true;}
+            }
+            if (!foundClickedItem && testItemId === itemId){
+              foundClickedItem = true;
+            }
+            if (foundClickedItem || foundLastItem){
+              //in range
+              // console.log(">>>in range",testItemId,parentFolderIds[i])
+              const isSelected = get(selectedDriveItemsAtom({driveId,driveInstanceId,itemId:testItemId}));
+              if (!isSelected){
+                set(selectedDriveItemsAtom({driveId,driveInstanceId,itemId:testItemId}),true);//select item
+                addToGlobalSelected.push({driveId,driveInstanceId,itemId:testItemId,parentFolderId:parentFolderIds[i]})
+              }
+              if (foundClickedItem && foundLastItem){
+                break;
+              }
+            }
+            
+          }
+          
+          if (needToReverseOrder){
+            addToGlobalSelected.reverse();
+          }
+          // console.log(">>>globalSelected",globalSelected)
+          // console.log(">>>addToGlobalSelected",addToGlobalSelected)
+          set(globalSelectedNodesAtom,[...globalSelected,...addToGlobalSelected])
         }
       break;
       case "clear all":
-          //TODO: Only clear this browser?
           for (let itemObj of globalSelected){
             const {parentFolderId,...atomFormat} = itemObj;  //Without parentFolder
             set(selectedDriveItemsAtom(atomFormat),false)
@@ -1575,8 +1880,11 @@ const DoenetML = React.memo((props)=>{
   const isSelected = useRecoilValue(selectedDriveItemsAtom({driveId:props.driveId,driveInstanceId:props.driveInstanceId,itemId:props.item.itemId})); 
   const [selectedDrive, setSelectedDrive] = useRecoilState(selectedDriveAtom); 
   const [dragState] = useRecoilState(dragStateAtom);
-  const { onDragStart, onDrag, onDragEnd, renderDragGhost } = useDnDCallbacks();
+  const { onDragStart, onDrag, onDragEnd, renderDragGhost, registerDropTarget, unregisterDropTarget } = useDnDCallbacks();
   const globalSelectedNodes = useRecoilValue(globalSelectedNodesAtom); 
+  const [folderInfoObj, setFolderInfo] = useRecoilStateLoadable(folderInfoSelector({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.driveId}))
+  const parentFolderSortOrder = useRecoilValue(folderSortOrderAtom({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.item?.parentFolderId}))
+  const parentFolderSortOrderRef = useRef(parentFolderSortOrder);  // for memoized DnD callbacks
 
   const indentPx = 20;
   let bgcolor = "#f6f8ff";
@@ -1596,6 +1904,42 @@ const DoenetML = React.memo((props)=>{
   let label = props.item?.label;
   if (props.item?.assignment_isPublished === "1" && props.item?.isAssignment === "1"){
     label = props.item?.assignment_title;
+  }
+
+  useEffect(() => {
+    parentFolderSortOrderRef.current = parentFolderSortOrder;
+  }, [parentFolderSortOrder])
+
+  const onDragOver = ({x, y, dropTargetRef}) => {
+    const dropTargetTopY = dropTargetRef?.offsetTop;
+    const dropTargetHeight = dropTargetRef?.clientHeight;
+    const cursorY = y;
+    const cursorArea = (cursorY - dropTargetTopY) / dropTargetHeight;
+    if (parentFolderSortOrderRef.current === sortOptions.DEFAULT) {
+      if (cursorArea < 0.5) {
+        // insert shadow to top of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "beforeCurrent",
+          itemId: props.item.itemId,
+          parentId: props.item.parentFolderId
+        });
+      }else if (cursorArea < 1.0000) {
+        // insert shadow to bottom of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "afterCurrent",
+          itemId: props.item.itemId,
+          parentId: props.item.parentFolderId
+        });
+      }
+    }
+  }
+
+  const onDragEndCb = () => {
+    setFolderInfo({instructionType: folderInfoSelectorActions.REPLACE_DRAG_SHADOW});
+    setFolderInfo({instructionType: folderInfoSelectorActions.REMOVE_DRAG_SHADOW});
+    onDragEnd();
   }
 
   let doenetMLJSX = <div
@@ -1693,19 +2037,35 @@ const DoenetML = React.memo((props)=>{
         onDragStart={() => onDragStart({ nodeId: props.item.itemId, driveId: props.driveId, onDragStartCallback })}
         onDrag={onDrag}
         onDragEnd={onDragEnd}
+        onDragEnd={onDragEndCb}
         ghostElement={renderDragGhost(props.item.itemId, doenetMLJSX)}
         >
         { doenetMLJSX } 
       </Draggable>
+
+
+      // attach dropTarget to enable drag-reordering
+      doenetMLJSX = <WithDropTarget
+        key={`wdtnode${props.driveInstanceId}${props.item.itemId}`} 
+        id={props.item.itemId}
+        registerDropTarget={registerDropTarget} 
+        unregisterDropTarget={unregisterDropTarget}
+        dropCallbacks={{
+          onDragOver: onDragOver,
+        }}
+        >
+        { doenetMLJSX } 
+      </WithDropTarget>;
     }
     return doenetMLJSX;
   })
 
 const Url = React.memo((props)=>{
-  const { onDragStart, onDrag, onDragEnd, renderDragGhost } = useDnDCallbacks();
+  const { onDragStart, onDrag, onDragEnd, renderDragGhost, registerDropTarget, unregisterDropTarget } = useDnDCallbacks();
   const [dragState] = useRecoilState(dragStateAtom);
-  // console.log(`=== 🔗 Url`)
-
+  const [folderInfoObj, setFolderInfo] = useRecoilStateLoadable(folderInfoSelector({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.driveId}))
+  const parentFolderSortOrder = useRecoilValue(folderSortOrderAtom({driveId:props.driveId,instanceId:props.driveInstanceId, folderId:props.item?.parentFolderId}))
+  const parentFolderSortOrderRef = useRef(parentFolderSortOrder);  // for memoized DnD callbacks
 
   const history = useHistory();
   const setSelected = useSetRecoilState(selectedDriveItems({driveId:props.driveId,driveInstanceId:props.driveInstanceId,itemId:props.item.itemId})); 
@@ -1727,6 +2087,42 @@ const Url = React.memo((props)=>{
   if (isSelected && dragState.isDragging) { bgcolor = "#e2e2e2"; }  
   if (props.item.isPublished == 1 && !props.isNav) {published = <FontAwesomeIcon icon={faUsers}/>}
   if (props.item.isAssignment == 1 && !props.isNav) {assigned = <FontAwesomeIcon icon={faUserEdit}/>}
+
+  useEffect(() => {
+    parentFolderSortOrderRef.current = parentFolderSortOrder;
+  }, [parentFolderSortOrder])
+
+  const onDragOver = ({x, y, dropTargetRef}) => {
+    const dropTargetTopY = dropTargetRef?.offsetTop;
+    const dropTargetHeight = dropTargetRef?.clientHeight;
+    const cursorY = y;
+    const cursorArea = (cursorY - dropTargetTopY) / dropTargetHeight;
+    if (parentFolderSortOrderRef.current === sortOptions.DEFAULT) {
+      if (cursorArea < 0.5) {
+        // insert shadow to top of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "beforeCurrent",
+          itemId: props.item.itemId,
+          parentId: props.item.parentFolderId
+        });
+      }else if (cursorArea < 1.0000) {
+        // insert shadow to bottom of current dropTarget
+        setFolderInfo({
+          instructionType: folderInfoSelectorActions.INSERT_DRAG_SHADOW,
+          position: "afterCurrent",
+          itemId: props.item.itemId,
+          parentId: props.item.parentFolderId
+        });
+      }
+    }
+  }
+
+  const onDragEndCb = () => {
+    setFolderInfo({instructionType: folderInfoSelectorActions.REPLACE_DRAG_SHADOW});
+    setFolderInfo({instructionType: folderInfoSelectorActions.REMOVE_DRAG_SHADOW});
+    onDragEnd();
+  }
 
   let urlJSX = <div
       data-doenet-driveinstanceid={props.driveInstanceId}
@@ -1816,11 +2212,25 @@ const Url = React.memo((props)=>{
       onDragStart={() => onDragStart({ nodeId: props.item.itemId, driveId: props.driveId, onDragStartCallback })}
       onDrag={onDrag}
       onDragEnd={onDragEnd}
+      onDragEnd={onDragEndCb}
       ghostElement={renderDragGhost(props.item.itemId, urlJSX)}
       >
       { urlJSX } 
     </Draggable>
   }
+
+  // attach dropTarget to enable drag-reordering
+  urlJSX = <WithDropTarget
+    key={`wdtnode${props.driveInstanceId}${props.item.itemId}`} 
+    id={props.item.itemId}
+    registerDropTarget={registerDropTarget} 
+    unregisterDropTarget={unregisterDropTarget}
+    dropCallbacks={{
+      onDragOver: onDragOver,
+    }}
+    >
+    { urlJSX } 
+  </WithDropTarget>
 
   return urlJSX;
 
@@ -1829,18 +2239,22 @@ const Url = React.memo((props)=>{
 function useDnDCallbacks() {
   const { dropState, dropActions } = useContext(DropTargetsContext);
   const [dragState, setDragState] = useRecoilState(dragStateAtom);
+  const globalSelectedNodes = useRecoilValue(globalSelectedNodesAtom); 
 
   const onDragStart = ({ nodeId, driveId, onDragStartCallback }) => {
-    setDragState((dragState) => ({
+    let draggedItemsId = new Set();
+    draggedItemsId.add(nodeId)
+    setDragState((dragState) => ({      
       ...dragState,
       isDragging: true,
-      draggedOverDriveId: driveId
+      draggedOverDriveId: driveId,
+      draggedItemsId
     }));
     onDragStartCallback?.();
   };
 
   const onDrag = ({ clientX, clientY, translation, id }) => {
-    dropActions.handleDrag(clientX, clientY, id);
+    dropActions.handleDrag(clientX, clientY);
   };
 
   const onDragOverContainer = ({ id, driveId, isBreadcrumb=false }) => {
@@ -1858,17 +2272,15 @@ function useDnDCallbacks() {
     setDragState((dragState) => ({
       ...dragState,
       isDragging: false,
-      draggedOverDriveId: null
+      draggedOverDriveId: null,
+      draggedItemsId: null
     }));
     dropActions.handleDrop();
   };
 
   function renderDragGhost(id, element) {
     const dragGhostId = `drag-ghost-${id}`;
-    // const numItems = Object.keys(globalSelectedNodesAtom).length;
-    // const numItems = 1;
     const numItems = useRecoilValue(globalSelectedNodesAtom).length;
-    // console.log(numItems)
     return <DragGhost id={dragGhostId} numItems={numItems} element={element} />;
   }
 
@@ -1877,7 +2289,9 @@ function useDnDCallbacks() {
     onDrag,
     onDragOverContainer,
     onDragEnd,
-    renderDragGhost
+    renderDragGhost,
+    registerDropTarget: dropActions.registerDropTarget,
+    unregisterDropTarget: dropActions.unregisterDropTarget
   }
 }
 
@@ -1952,7 +2366,7 @@ function useUpdateBreadcrumb(props) {
         dropCallbacks={{
           onDragOver: () => onDragOverContainer({ id: currentNodeId, driveId: props.driveId, isBreadcrumb: true }),
           onDrop: () => {
-            setFolderInfo({instructionType: "move items", driveId: props.driveId, itemId: currentNodeId});
+            setFolderInfo({instructionType: folderInfoSelectorActions.MOVE_ITEMS, driveId: props.driveId, itemId: currentNodeId});
           }
         }}
         >
@@ -1979,7 +2393,7 @@ function useUpdateBreadcrumb(props) {
       unregisterDropTarget={dropActions.unregisterDropTarget}
       dropCallbacks={{
         onDragOver: () => onDragOverContainer({ id: routePathDriveId, driveId: props.driveId, isBreadcrumb: true }),
-        onDrop: () => {setFolderInfo({instructionType: "move items", driveId: props.driveId, itemId: props.driveId});}
+        onDrop: () => {setFolderInfo({instructionType: folderInfoSelectorActions.MOVE_ITEMS, driveId: props.driveId, itemId: props.driveId});}
       }}
       >
       <Link 
