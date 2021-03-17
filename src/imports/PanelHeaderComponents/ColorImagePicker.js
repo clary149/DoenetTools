@@ -73,6 +73,21 @@ export default function ColorImagePicker(props){
     const [displayColor, setDisplayColor] = useState("#e2e2e2");
     const [displayImage, setDisplayImage] = useState("none");
 
+    // if (props.current){
+    //     for (var i = 0; i < driveColors.length; i++){
+    //         if (props.current == driveColors[i]){
+    //             setDisplayColor(driveColors[i]);
+    //             props.current = null;
+    //         }
+    //     }
+    //     for (var j = 0; j < driveImages.length; j++){
+    //         if (props.current == driveImages[j]){
+    //             setDisplayColor(driveImages[j]);
+    //             props.current = null;
+    //         }
+    //     }
+    // }
+
     function handleClick(){
         if (menuOpen == "True") {
             setMenuOpen("False")

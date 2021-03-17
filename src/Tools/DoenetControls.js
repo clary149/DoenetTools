@@ -18,6 +18,7 @@ import UnitMenu from '../imports/PanelHeaderComponents/UnitMenu.js';
 import VerticalDivider from '../imports/PanelHeaderComponents/VerticalDivider.js';
 import { faCode } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import ColorImagePicker from '../imports/PanelHeaderComponents/ColorImagePicker.js';
 
 // === HOW TO ADD TO CONTROLS ===
 // 1. Import the component in the COMPONENT IMPORTS SECTION above
@@ -115,6 +116,21 @@ export default function attempt() {
           propCode: {alert},
           description: 'Changes to alert mode (color is red)'},
       ]
+    },
+    {
+      name: 'ColorImagePicker',
+      id: 'colorimagepicker',
+    code: ColorImagePicker,
+    codePreview: '<ColorImagePicker/>',
+    req_props: null,
+    req_children: null,
+    use: 'Used for color selection',
+    // props: [
+    //   {name: 'Current',
+    //   propPreview: '<ColorImagePicker current="#6F4075"/>',
+    //   propCode: {current: '#6F4075'},
+    //   description: 'Used to set the current color of selected item'},
+    // ]
     },
     {
       name: 'SearchBar',
