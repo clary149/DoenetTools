@@ -18,6 +18,7 @@ import UnitMenu from '../imports/PanelHeaderComponents/UnitMenu';
 import VerticalDivider from '../imports/PanelHeaderComponents/VerticalDivider';
 import { faCode } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import ColorImagePicker from '../imports/PanelHeaderComponents/ColorImagePicker.js';
 
 // === HOW TO ADD TO CONTROLS ===
 // 1. Import the component in the COMPONENT IMPORTS SECTION above
@@ -117,6 +118,21 @@ export default function attempt() {
       ]
     },
     {
+      name: 'ColorImagePicker',
+      id: 'colorimagepicker',
+    code: ColorImagePicker,
+    codePreview: '<ColorImagePicker/>',
+    req_props: null,
+    req_children: null,
+    use: 'Used for color selection',
+    // props: [
+    //   {name: 'Current',
+    //   propPreview: '<ColorImagePicker current="#6F4075"/>',
+    //   propCode: {current: '#6F4075'},
+    //   description: 'Used to set the current color of selected item'},
+    // ]
+    },
+    {
       name: 'SearchBar',
       id: 'searchbar',
       code: SearchBar,
@@ -143,7 +159,7 @@ export default function attempt() {
       propCode: {value: 'Enter cat names'},
       description: 'Changes the text'},
       {name: 'Alert',
-      propPreview: '<Textfield alert/>',
+      propPreview: '<Textfield alert>',
       propCode: {alert},
       description: 'Changes to alert mode (border is red)'},
       ]

@@ -1,15 +1,17 @@
 export const driveColors=[
-  'FF0000',
-  'FFA500',
-  'FFFF00',
-  '0000FF',
-  '1F85DE',
-  '800080',
-  '008000',
-  '808080',
-  '964B00',
-  'D2B48C',
-  'FFFDD0',
+  '#6F4075',
+  '#1A5A99',
+  '#8FB8DE',
+  '#507C50',
+  '#7EB67C',
+  '#F5DD90',
+  '#F4783E',
+  // 'F76C5E',
+  '#C1292E',
+  '#9C9C9C'
+  
+  // 'D2B48C',
+  // 'FFFDD0',
 ]
 
 export const driveImages=[
@@ -28,5 +30,5 @@ export const driveImages=[
   'picture13.jpg',
   'picture14.jpg',
   'picture15.jpg',
-  'picture16.jpg',
+  // 'picture16.jpg',
 ]
