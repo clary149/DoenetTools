@@ -1,5 +1,6 @@
 import React from "react";
 import { useMenuContext } from "./Menu";
+import "./menu.css";
 import {roleAtom} from '../../Tools/DoenetCourse';
 import {
   RecoilRoot,
