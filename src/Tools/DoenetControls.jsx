@@ -117,6 +117,21 @@ export default function attempt() {
       ]
     },
     {
+      name: 'ColorImagePicker',
+      id: 'colorimagepicker',
+    code: ColorImagePicker,
+    codePreview: '<ColorImagePicker/>',
+    req_props: null,
+    req_children: null,
+    use: 'Used for color selection',
+    // props: [
+    //   {name: 'Current',
+    //   propPreview: '<ColorImagePicker current="#6F4075"/>',
+    //   propCode: {current: '#6F4075'},
+    //   description: 'Used to set the current color of selected item'},
+    // ]
+    },
+    {
       name: 'SearchBar',
       id: 'searchbar',
       code: SearchBar,
